@@ -20,6 +20,7 @@ const socket = io();
 import { ARButton } from "/node_modules/three/examples/jsm/webxr/ARButton.js";
 import { VRButton } from "/node_modules/three/examples/jsm/webxr/VRButton.js";
 import { a } from "./chat.js";
+import { name_list } from "./channellist.js";
 
 /* THREEJS WORLD SETUP */
 let currentVrm;
@@ -28,7 +29,7 @@ var mocapData = null;
 
 // renderer
 const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-renderer.setSize(window.innerWidth / 1.8, window.innerHeight / 1.4);
+renderer.setSize(window.innerWidth / 1.55, window.innerHeight / 1.3);
 renderer.setPixelRatio(window.devicePixelRatio);
 
 const useXRres = await fetch("/useWebXR");
@@ -47,6 +48,49 @@ document.body.appendChild(renderer.domElement);
 
 var setting = document.createElement("div");
 setting.id = "settingContainer";
+var name = document.createElement("input");
+name.id = "name";
+name.type = "text";
+name.placeholder = "방송 제목";
+setting.appendChild(name);
+var channel = document.createElement("div");
+channel.id = "channel";
+setting.appendChild(channel);
+var channel_img = document.createElement("img");
+channel_img.id = "channel_img";
+channel_img.src = "./image.png";
+channel.appendChild(channel_img);
+var channel_name = document.createElement("p");
+channel_name.id = "channel_name";
+channel_name.textContent = "하나코";
+channel.appendChild(channel_name);
+var editBtn = document.createElement("button");
+editBtn.id = "editBtn";
+editBtn.innerHTML = "수정";
+channel.appendChild(editBtn);
+var channel_list = document.createElement("div");
+channel_list.id = "channel_list";
+document.body.appendChild(channel_list);
+name_list.map(function (name) {
+  var channel_name_list = document.createElement("div");
+  channel_name_list.id = "channel_name_list";
+  var channel_name = document.createElement("p");
+  channel_name.id = "name_list";
+  channel_name.textContent = name.name;
+  var channel_number_circle = document.createElement("div");
+  channel_number_circle.id = "circle";
+  var channel_number = document.createElement("p");
+  channel_number.id = "channel_number";
+  channel_number.textContent = name.number;
+  var channel_profile = document.createElement("img");
+  channel_profile.id = "channel_profile";
+  channel_profile.src = name.img;
+  channel_name_list.appendChild(channel_profile);
+  channel_name_list.appendChild(channel_name);
+  channel_name_list.appendChild(channel_number_circle);
+  channel_name_list.appendChild(channel_number);
+  channel_list.appendChild(channel_name_list);
+});
 document.body.appendChild(setting);
 
 var Chat = document.createElement("div");
