@@ -1,0 +1,113 @@
+# main.yml
+
+# Workflow's name
+name: Build SysMocap For Win/Mac
+
+# Workflow's trigger
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+# Workflow's jobs
+jobs:
+  # job's id
+  release:
+    # job's name
+    name: build and release sysmocap
+    
+    # the type of machine to run the job on
+    runs-on: ${{ matrix.os }}
+    
+    # create a build matrix for jobs
+    strategy:
+      matrix:
+        os: [windows-2019, macos-11]
+
+    steps:
+      # step1: check out repository
+      - name: Check out git repository
+        uses: actions/checkout@v3
+
+      # step2: install node env
+      - name: Install Node.js
+        uses: actions/setup-node@v3
+
+      # step3: npm install
+      - name: npm install
+        run: |
+          npm install
+
+      # step4: build app for mac/win
+      - name: build windows app
+        if: matrix.os == 'windows-2019'
+        run: |
+          npm run package:win64
+          npm run zip:win64
+        env:
+          GH_TOKEN: ${{ secrets.SECRET_TOKEN }}
+
+      - name: Setup Python 3.11 (macOS)
+        uses: actions/setup-python@v4
+        if: matrix.os == 'macos-11'
+        with:
+          python-version: '3.11'
+      
+      - name: build mac app
+        if: matrix.os == 'macos-11'
+        run: |
+          npm run package:mac64
+          npm run dmg
+          npm run package:macarm
+          npm run dmgarm
+        env:
+          GH_TOKEN: ${{ secrets.SECRET_TOKEN }}
+
+      - name: Get the version tag
+        if: matrix.os == 'macos-11'
+        run: echo "VERSION_TAG=$(git describe --tags)" >> $GITHUB_ENV
+
+      - name: Get the version tag win
+        if: matrix.os == 'windows-2019'
+        run: |
+          $versionTag = git describe --tags
+          echo "VERSION_TAG=$versionTag" >> $GITHUB_ENV
+
+      - name: Rename files in OutApp/packages
+        if: matrix.os == 'macos-11'
+        run: |
+          for file in OutApp/packages/*; do
+            # 获取文件扩展名
+            ext="${file##*.}"
+            # 获取不带扩展名的文件名
+            base="${file%.*}"
+            # 重命名文件，添加版本号
+            mv "$file" "${base}-${{ env.VERSION_TAG }}.$ext"
+          done
+
+      - name: Rename files in OutApp/packages win
+        if: matrix.os == 'windows-2019'
+        run: |
+          $versionTag = "${{ env.VERSION_TAG }}"
+          Get-ChildItem OutApp/packages -File | ForEach-Object {
+            $baseName = $_.BaseName
+            $extension = $_.Extension
+            $newName = "${baseName}-${versionTag}${extension}"
+            Rename-Item $_.FullName $newName
+          }
+
+      # step6: upload artifacts
+      - name: upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.os }}
+          path: OutApp/packages
+
+      # step7: create release
+      - name: release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: "OutApp/packages/**"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
